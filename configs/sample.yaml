@@ -1,5 +1,6 @@
-model_name: meta-llama/Llama-3.1-8B-Instruct
+model_name: meta-llama/Llama-3.1-70B-Instruct
 gpus: 1
-input_path: data/B2_openai_copy.jsonl
+input_path: data/B2_openai.jsonl
 output_path: output/bush/
-hf_token: TOKEN
+hf_token: HF_TOKEN_GOES_HERE
+quantization: True

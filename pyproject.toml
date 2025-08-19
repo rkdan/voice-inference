@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "bitsandbytes>=0.47.0",
     "loguru>=0.7.3",
     "pydantic>=2.11.7",
     "vllm>=0.10.1",

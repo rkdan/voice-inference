@@ -1,5 +1,13 @@
+
+
 import click
 import os
+
+# this needs to be somewhere, but I have no idea where...so it's everywhere...
+# also don't know why models doesn't work, but workspace/models does...
+os.environ['HF_HOME'] = 'workspace/models'
+os.environ['TRANSFORMERS_CACHE'] = 'workspace/models'
+
 from loguru import logger
 from voice_inference.logging import setup_logging
 from voice_inference.config import load_config
@@ -7,6 +15,7 @@ from voice_inference.infer import VLLMInference, load_questions
 from pathlib import Path
 from datetime import datetime
 import json
+
 
 
 @click.command()
@@ -35,6 +44,9 @@ def main(config_path, log_level, log_file):
 
     # set environment variable for Hugging Face token
     os.environ['HF_TOKEN'] = config.hf_token
+    # not sure if this is the right place for these...
+    os.environ['HF_HOME'] = 'workspace/models'
+    os.environ['TRANSFORMERS_CACHE'] = 'workspace/models'
 
     # == Run inference ===
     llm = VLLMInference(
@@ -58,6 +70,9 @@ def main(config_path, log_level, log_file):
     experiment_name = config.model_name.replace("/", "_").lower()
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     output_path = path / f"{experiment_name}_{timestamp}"
+
+    output_path.mkdir(parents=True, exist_ok=True)
+    output_path = output_path / "results.json"
 
     generated_responses = [{'gen_response' : output.outputs[0].text} for output in outputs]
 

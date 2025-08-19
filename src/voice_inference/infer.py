@@ -1,12 +1,11 @@
 import json
 import os
+import torch
 
 from transformers import AutoTokenizer
 from vllm import LLM, SamplingParams
 
-# not sure if this is the right place for these...
-os.environ['HF_HOME'] = 'models'
-os.environ['TRANSFORMERS_CACHE'] = 'models'
+
 
 def load_questions(file_path):
     pairs = []
@@ -21,8 +20,17 @@ def load_questions(file_path):
 
 class VLLMInference:
     def __init__(self, model_name, tokenizer_name, result_path, gpus=1):
+        os.environ['HF_HOME'] = 'workspace/models'
+        os.environ['TRANSFORMERS_CACHE'] = 'workspace/models'
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-        self.model = LLM(model=model_name, tensor_parallel_size=gpus)
+        self.model = LLM(
+            model=model_name,
+            tensor_parallel_size=gpus,
+            dtype=torch.bfloat16,
+            trust_remote_code=True,
+            quantization='bitsandbytes',
+            max_model_len=8192,
+        )
         self.result_path = result_path
 
     def batch_inference(self, message_list):
