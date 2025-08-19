@@ -4,6 +4,7 @@ import os
 from transformers import AutoTokenizer
 from vllm import LLM, SamplingParams
 
+# not sure if this is the right place for these...
 os.environ['HF_HOME'] = 'models'
 os.environ['TRANSFORMERS_CACHE'] = 'models'
 
@@ -37,11 +38,4 @@ class VLLMInference:
         sampling_params = SamplingParams(max_tokens=2048)
         outputs = self.model.generate(texts, sampling_params=sampling_params)
 
-        self._save_outputs(outputs)
-
-    def _save_outputs(self, outputs):
-
-        generated_responses = [{'gen_response' : output.outputs[0].text} for output in outputs]
-
-        with open(self.result_path, 'w') as f:
-            json.dump(generated_responses, f, indent=2)
+        return outputs

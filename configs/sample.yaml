@@ -1,5 +1,5 @@
 model_name: meta-llama/Llama-3.1-8B-Instruct
 gpus: 1
-input_path: data/B2_openai.jsonl
-output_path: output/inference_results.json
-hf_token: YOUR_HF_TOKEN_HERE
+input_path: data/B2_openai_copy.jsonl
+output_path: output/bush/
+hf_token: TOKEN

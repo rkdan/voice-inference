@@ -4,6 +4,10 @@ from loguru import logger
 from voice_inference.logging import setup_logging
 from voice_inference.config import load_config
 from voice_inference.infer import VLLMInference, load_questions
+from pathlib import Path
+from datetime import datetime
+import json
+
 
 @click.command()
 @click.argument("config_path")
@@ -22,7 +26,7 @@ def main(config_path, log_level, log_file):
         logger.info("Model: {}", config.model_name)
         logger.info("GPU count: {}", config.gpus)
         logger.info("Data path: {}", config.input_path)
-        logger.info("Output path: {}", config.data.output_path)
+        logger.info("Output path: {}", config.output_path)
         print("")
 
     except Exception as e:
@@ -47,5 +51,18 @@ def main(config_path, log_level, log_file):
     logger.info("Loaded {} question pairs from {}", len(message_list), config.input_path)
 
     # Perform batch inference
-    llm.batch_inference(message_list)
-    logger.success("Inference completed successfully! Results saved to {}", config.output_path)
+    outputs = llm.batch_inference(message_list)
+
+    logger.info("Saving results to {}", config.output_path)
+    path = Path(config.output_path)
+    experiment_name = config.model_name.replace("/", "_").lower()
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    output_path = path / f"{experiment_name}_{timestamp}"
+
+    generated_responses = [{'gen_response' : output.outputs[0].text} for output in outputs]
+
+    
+    with open(output_path, 'w') as f:
+        json.dump(generated_responses, f, indent=2)
+
+    logger.success("Inference completed successfully! Results saved to {}", output_path)
