@@ -4,7 +4,7 @@ from pathlib import Path
 
 class SamplingConfig(BaseModel):
     """Configuration for sampling"""
-    temperature: float = Field(0.1, description="Sampling temperature")
+    temperature: float | list[float] = Field(1.0, description="Sampling temperature or list of temperatures")
     n: int = Field(1, description="Number of samples to generate")
     max_new_tokens: int = Field(2048, description="Maximum number of new tokens")
 

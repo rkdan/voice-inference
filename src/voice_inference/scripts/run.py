@@ -22,7 +22,7 @@ import json
 @click.option("--temp", type=float, help="Override temperature for sampling")
 @click.option("--max-tokens", type=int, help="Override max tokens for generation")
 @click.option("--n", type=float, help="Override number of samples to generate")
-@click.option("--n-gpus", type=int, default=1, help="Number of GPUs to use for inference")
+@click.option("--n-gpus", type=int, help="Number of GPUs to use for inference")
 def main(config_path, log_level, log_file, temp, max_tokens, n, n_gpus):
     """Run stylometric analysis"""
 
@@ -67,8 +67,7 @@ def main(config_path, log_level, log_file, temp, max_tokens, n, n_gpus):
         model_name=config.model_name,
         tokenizer_name=config.model_name,
         result_path=config.output_path,
-        gpus=config.gpus,
-        sampling_params=config.sampling_params  # Pass sampling params to inference
+        gpus=config.gpus,  # Pass sampling params to inference
     )
 
     logger.info("Starting inference with model: {}", config.model_name)
@@ -78,25 +77,31 @@ def main(config_path, log_level, log_file, temp, max_tokens, n, n_gpus):
     logger.info("Loaded {} question pairs from {}", len(message_list), config.input_path)
 
     # Perform batch inference
-    outputs = llm.batch_inference(message_list)
 
-    logger.info("Saving results to {}", config.output_path)
-    path = Path(config.output_path)
-    experiment_name = config.model_name.replace("/", "_").lower()
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # Include temperature in output filename for easier identification
-    temp_suffix = f"_temp{config.sampling_params.temperature}"
-    n_suffix = f"_n{config.sampling_params.n}" if config.sampling_params.n > 1 else ""
-    output_path = path / f"{experiment_name}{temp_suffix}{n_suffix}_{timestamp}"
-    
-    output_path.mkdir(parents=True, exist_ok=True)
+    if type(config.sampling_params.temperature) is list:
+        logger.info("Running inference for multiple temperatures: {}", config.sampling_params.temperature)
+        for temperature in config.sampling_params.temperature:
+            outputs = llm.batch_inference(message_list, temperature, config.sampling_params.max_new_tokens, config.sampling_params.n)
+            
+            logger.info("Saving results to {}", config.output_path)
+            path = Path(config.output_path)
+            experiment_name = config.model_name.replace("/", "_").lower()
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            # Include temperature in output filename for easier identification
+            temp_suffix = f"_temp{temperature}"
+            n_suffix = f"_n{config.sampling_params.n}" if config.sampling_params.n > 1 else ""
+            output_path = path / f"{experiment_name}{temp_suffix}{n_suffix}_{timestamp}"
+            
+            output_path.mkdir(parents=True, exist_ok=True)
 
-    for i in range(config.sampling_params.n):
-        # we need to create a separate results_i file for each sample
-        output_file = output_path / f"results_{i}.json"
-        logger.info("Saving results to {}", output_file)
-        with open(output_file, 'w') as f:
-            json.dump([{'gen_response': output.outputs[i].text} for output in outputs], f, indent=2)
+            for i in range(config.sampling_params.n):
+                # we need to create a separate results_i file for each sample
+                output_file = output_path / f"results_{i}.json"
+                logger.info("Saving results to {}", output_file)
+                with open(output_file, 'w') as f:
+                    json.dump([{'gen_response': output.outputs[i].text} for output in outputs], f, indent=2)
 
 
-    logger.success("Inference completed successfully! Results saved to {}", output_path)
+            logger.success("Inference completed successfully! Results saved to {}", output_path)
+
+    logger.success("All inference runs completed successfully!")

@@ -19,7 +19,7 @@ def load_questions(file_path):
 
 
 class VLLMInference:
-    def __init__(self, model_name, tokenizer_name, result_path, gpus=1, sampling_params=None):
+    def __init__(self, model_name, tokenizer_name, result_path, gpus):
         os.environ['HF_HOME'] = 'workspace/models'
         os.environ['TRANSFORMERS_CACHE'] = 'workspace/models'
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
@@ -31,9 +31,8 @@ class VLLMInference:
             max_model_len=16384,
         )
         self.result_path = result_path
-        self.sampling_params = sampling_params or SamplingConfig()
 
-    def batch_inference(self, message_list):
+    def batch_inference(self, message_list, temperature, max_tokens, n):
         texts = [
             self.tokenizer.apply_chat_template(
                 messages,
@@ -44,9 +43,9 @@ class VLLMInference:
         ]
         
         vllm_sampling_params = SamplingParams(
-            temperature=self.sampling_params.temperature,
-            max_tokens=self.sampling_params.max_new_tokens,
-            n=self.sampling_params.n,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            n=n,
         )
         outputs = self.model.generate(texts, sampling_params=vllm_sampling_params)
 
