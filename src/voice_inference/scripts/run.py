@@ -1,5 +1,3 @@
-
-
 import click
 import os
 
@@ -17,12 +15,15 @@ from datetime import datetime
 import json
 
 
-
 @click.command()
 @click.argument("config_path")
 @click.option("--log-level", default="INFO", help="Logging level")
 @click.option("--log-file", help="Log file path")
-def main(config_path, log_level, log_file):
+@click.option("--temp", type=float, help="Override temperature for sampling")
+@click.option("--max-tokens", type=int, help="Override max tokens for generation")
+@click.option("--n", type=float, help="Override number of samples to generate")
+@click.option("--n-gpus", type=int, default=1, help="Number of GPUs to use for inference")
+def main(config_path, log_level, log_file, temp, max_tokens, n, n_gpus):
     """Run stylometric analysis"""
 
     setup_logging(level=log_level, log_file=log_file)
@@ -31,11 +32,24 @@ def main(config_path, log_level, log_file):
     try:
         logger.info("Loading config from {}", config_path)
         config = load_config(config_path)
+        
+        # Override sampling parameters if provided via CLI
+        if temp is not None:
+            config.sampling_params.temperature = temp
+            logger.info("Overriding temperature to: {}", temp)
+        if max_tokens is not None:
+            config.sampling_params.max_tokens = max_tokens
+            logger.info("Overriding max_tokens to: {}", max_tokens)
+        if n is not None:
+            config.sampling_params.n = n
+            logger.info("Overriding n to: {}", n)
+        if n_gpus is not None:
+            config.gpus = n_gpus
+            logger.info("Overriding number of GPUs to: {}", n_gpus)
+        
         logger.success("Config loaded successfully!")
-        logger.info("Model: {}", config.model_name)
-        logger.info("GPU count: {}", config.gpus)
-        logger.info("Data path: {}", config.input_path)
-        logger.info("Output path: {}", config.output_path)
+        print("Current configuration:")
+        print(config.model_dump_json(indent=2))
         print("")
 
     except Exception as e:
@@ -53,7 +67,8 @@ def main(config_path, log_level, log_file):
         model_name=config.model_name,
         tokenizer_name=config.model_name,
         result_path=config.output_path,
-        gpus=config.gpus
+        gpus=config.gpus,
+        sampling_params=config.sampling_params  # Pass sampling params to inference
     )
 
     logger.info("Starting inference with model: {}", config.model_name)
@@ -69,13 +84,27 @@ def main(config_path, log_level, log_file):
     path = Path(config.output_path)
     experiment_name = config.model_name.replace("/", "_").lower()
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    output_path = path / f"{experiment_name}_{timestamp}"
-
+    # Include temperature in output filename for easier identification
+    temp_suffix = f"_temp{config.sampling_params.temperature}"
+    n_suffix = f"_n{config.sampling_params.n}" if config.sampling_params.n > 1 else ""
+    output_path = path / f"{experiment_name}{temp_suffix}{n_suffix}_{timestamp}"
+    
     output_path.mkdir(parents=True, exist_ok=True)
     output_path = output_path / "results.json"
 
-    generated_responses = [{'gen_response' : output.outputs[0].text} for output in outputs]
-
+    generated_responses = []
+    for i, output in enumerate(outputs):
+        prompt_responses = []
+        for j, generation in enumerate(output.outputs):
+            prompt_responses.append({
+                'generation_id': j,
+                'gen_response': generation.text
+            })
+        
+        generated_responses.append({
+            'prompt_id': i,
+            'generations': prompt_responses
+        })
     
     with open(output_path, 'w') as f:
         json.dump(generated_responses, f, indent=2)

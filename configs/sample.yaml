@@ -4,3 +4,7 @@ input_path: data/B2_openai.jsonl
 output_path: output/bush/
 hf_token: HF_TOKEN_GOES_HERE
 quantization: True
+sampling_params:
+  temperature: 0.5
+  n: 1
+  max_new_tokens: 2048

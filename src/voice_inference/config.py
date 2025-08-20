@@ -2,6 +2,12 @@ import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from pathlib import Path
 
+class SamplingConfig(BaseModel):
+    """Configuration for sampling"""
+    temperature: float = Field(0.1, description="Sampling temperature")
+    n: int = Field(1, description="Number of samples to generate")
+    max_new_tokens: int = Field(2048, description="Maximum number of new tokens")
+
 class InferenceConfig(BaseModel):
     """Configuration for inference"""
     model_name: str = Field(..., description="Name of the model to use")
@@ -9,7 +15,9 @@ class InferenceConfig(BaseModel):
     input_path: str = Field(..., description="Path to the input data file")
     output_path: str = Field(..., description="Path to save the output results")
     hf_token: str = Field(..., description="Hugging Face token for model access")
-
+    sampling_params: SamplingConfig = Field(
+        default_factory=SamplingConfig, description="Sampling parameters for inference"
+    )
     @field_validator("output_path")
     def create_output_path(cls, v):
         Path(v).mkdir(parents=True, exist_ok=True)

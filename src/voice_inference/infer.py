@@ -4,7 +4,7 @@ import torch
 
 from transformers import AutoTokenizer
 from vllm import LLM, SamplingParams
-
+from voice_inference.config import SamplingConfig
 
 
 def load_questions(file_path):
@@ -19,7 +19,7 @@ def load_questions(file_path):
 
 
 class VLLMInference:
-    def __init__(self, model_name, tokenizer_name, result_path, gpus=1):
+    def __init__(self, model_name, tokenizer_name, result_path, gpus=1, sampling_params=None):
         os.environ['HF_HOME'] = 'workspace/models'
         os.environ['TRANSFORMERS_CACHE'] = 'workspace/models'
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
@@ -28,10 +28,10 @@ class VLLMInference:
             tensor_parallel_size=gpus,
             dtype=torch.bfloat16,
             trust_remote_code=True,
-            quantization='bitsandbytes',
-            max_model_len=8192,
+            max_model_len=16384,
         )
         self.result_path = result_path
+        self.sampling_params = sampling_params or SamplingConfig()
 
     def batch_inference(self, message_list):
         texts = [
@@ -43,7 +43,11 @@ class VLLMInference:
             ) for messages in message_list
         ]
         
-        sampling_params = SamplingParams(max_tokens=2048)
-        outputs = self.model.generate(texts, sampling_params=sampling_params)
+        vllm_sampling_params = SamplingParams(
+            temperature=self.sampling_params.temperature,
+            max_tokens=self.sampling_params.max_new_tokens,
+            n=self.sampling_params.n,
+        )
+        outputs = self.model.generate(texts, sampling_params=vllm_sampling_params)
 
         return outputs
