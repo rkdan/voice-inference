@@ -90,23 +90,13 @@ def main(config_path, log_level, log_file, temp, max_tokens, n, n_gpus):
     output_path = path / f"{experiment_name}{temp_suffix}{n_suffix}_{timestamp}"
     
     output_path.mkdir(parents=True, exist_ok=True)
-    output_path = output_path / "results.json"
 
-    generated_responses = []
-    for i, output in enumerate(outputs):
-        prompt_responses = []
-        for j, generation in enumerate(output.outputs):
-            prompt_responses.append({
-                'generation_id': j,
-                'gen_response': generation.text
-            })
-        
-        generated_responses.append({
-            'prompt_id': i,
-            'generations': prompt_responses
-        })
-    
-    with open(output_path, 'w') as f:
-        json.dump(generated_responses, f, indent=2)
+    for i in range(config.sampling_params.n):
+        # we need to create a separate results_i file for each sample
+        output_file = output_path / f"results_{i}.json"
+        logger.info("Saving results to {}", output_file)
+        with open(output_file, 'w') as f:
+            json.dump([{'gen_response': output.outputs[i].text} for output in outputs], f, indent=2)
+
 
     logger.success("Inference completed successfully! Results saved to {}", output_path)
